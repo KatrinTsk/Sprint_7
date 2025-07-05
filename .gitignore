@@ -1,0 +1,17 @@
+### Maven ###
+target/
+!target/allure-results/
+pom.xml.*
+
+### Allure ###
+allure-report/
+generated/
+
+### IDE ###
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+### System
