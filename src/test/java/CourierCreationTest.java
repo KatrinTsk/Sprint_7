@@ -1,69 +1,103 @@
 import courier.CourierTestData;
 import courier.CourierUtils;
 import io.restassured.response.Response;
+import org.junit.After;
 import org.junit.Test;
 
-import static org.hamcrest.Matchers.*;
+import static org.apache.http.HttpStatus.*;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
 
 public class CourierCreationTest extends TestBase {
+    private CourierTestData courier;
+    private String courierId;
 
-    @Test
-    public void testCreateCourierSuccessfully() {
-        CourierTestData courier = CourierTestData.getRandomCourier();
-        Response response = CourierUtils.createCourier(courier);
+    @After
+    public void tearDown() {
+        if (courier != null && courierId == null) {
+            try {
+                courierId = CourierUtils.loginCourierAndGetId(courier);
+            } catch (Exception e) {
+                System.out.println("Failed to login and get courier ID: " + e.getMessage());
+                return;
+            }
+        }
 
-        response.then()
-                .statusCode(201)
-                .body("ok", is(true));
-
-        // Cleanup
-        String courierId = CourierUtils.loginCourierAndGetId(courier);
-        CourierUtils.deleteCourier(courierId);
+        if (courierId != null) {
+            try {
+                CourierUtils.deleteCourier(courierId);
+            } catch (Exception e) {
+                System.out.println("Failed to delete courier: " + e.getMessage());
+            }
+        }
     }
 
     @Test
+    // Успешное создание нового курьера
+    public void testCreateCourierSuccessfully() {
+        courier = CourierTestData.getRandomCourier();
+        Response response = CourierUtils.createCourier(courier);
+
+        response.then()
+                .statusCode(SC_CREATED)
+                .body("ok", is(true));
+
+        courierId = CourierUtils.loginCourierAndGetId(courier);
+    }
+
+    @Test
+    // Ошибка при попытке создать двух одинаковых курьеров
     public void testCreateDuplicateCourier() {
-        CourierTestData courier = CourierTestData.getRandomCourier();
+        courier = CourierTestData.getRandomCourier();
         CourierUtils.createCourier(courier);
 
         Response response = CourierUtils.createCourier(courier);
         response.then()
-                .statusCode(409)
+                .statusCode(SC_CONFLICT)
                 .body("message", equalTo("Этот логин уже используется"));
 
-        // Cleanup
-        String courierId = CourierUtils.loginCourierAndGetId(courier);
-        CourierUtils.deleteCourier(courierId);
+        courierId = CourierUtils.loginCourierAndGetId(courier);
     }
 
     @Test
-    public void testCreateCourierWithoutRequiredField() {
-        CourierTestData courier = new CourierTestData("loginOnly", null, null);
+    // Создание курьера без логина
+    public void testCreateCourierWithoutLogin() {
+        courier = new CourierTestData(null, "Password", "FirstName");
         Response response = CourierUtils.createCourier(courier);
 
         response.then()
-                .statusCode(400)
+                .statusCode(SC_BAD_REQUEST)
                 .body("message", equalTo("Недостаточно данных для создания учетной записи"));
     }
 
     @Test
+    // Создание курьера без пароля
+    public void testCreateCourierWithoutPassword() {
+        courier = new CourierTestData("login", null, "FirstName");
+        Response response = CourierUtils.createCourier(courier);
+
+        response.then()
+                .statusCode(SC_BAD_REQUEST)
+                .body("message", equalTo("Недостаточно данных для создания учетной записи"));
+    }
+
+    @Test
+    // Ошибка при попытке создать курьера с уже существующим логином
     public void testCreateCourierWithExistingLogin() {
-        CourierTestData firstCourier = CourierTestData.getRandomCourier();
-        CourierUtils.createCourier(firstCourier);
+        courier = CourierTestData.getRandomCourier();
+        CourierUtils.createCourier(courier);
 
         CourierTestData secondCourier = new CourierTestData(
-                firstCourier.getLogin(),
+                courier.getLogin(),
                 "differentPassword",
                 "differentName"
         );
 
         Response response = CourierUtils.createCourier(secondCourier);
         response.then()
-                .statusCode(409)
+                .statusCode(SC_CONFLICT)
                 .body("message", equalTo("Этот логин уже используется"));
 
-        // Cleanup
-        String courierId = CourierUtils.loginCourierAndGetId(firstCourier);
-        CourierUtils.deleteCourier(courierId);
+        courierId = CourierUtils.loginCourierAndGetId(courier);
     }
 }

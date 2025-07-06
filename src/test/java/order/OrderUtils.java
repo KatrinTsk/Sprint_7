@@ -1,6 +1,5 @@
 package order;
 
-import order.OrderTestData;
 import io.qameta.allure.Step;
 import io.restassured.response.Response;
 
@@ -19,5 +18,12 @@ public class OrderUtils {
     public static Response getOrdersList() {
         return given()
                 .get("/api/v1/orders");
+    }
+
+    @Step("Отменить заказ")
+    public static Response cancelOrder(int trackId) {
+        return given()
+                .queryParam("track", trackId)
+                .put("/api/v1/orders/cancel");
     }
 }

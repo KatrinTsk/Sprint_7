@@ -1,30 +1,16 @@
 package courier;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
 import java.util.UUID;
 
+@Data
+@AllArgsConstructor
 public class CourierTestData {
     private String login;
     private String password;
     private String firstName;
-
-    public CourierTestData(String login, String password, String firstName) {
-        this.login = login;
-        this.password = password;
-        this.firstName = firstName;
-    }
-
-    // Геттеры
-    public String getLogin() {
-        return login;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public String getFirstName() {
-        return firstName;
-    }
 
     public static CourierTestData getRandomCourier() {
         String uuid = UUID.randomUUID().toString();

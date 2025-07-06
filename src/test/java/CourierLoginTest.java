@@ -1,65 +1,92 @@
 import courier.CourierTestData;
 import courier.CourierUtils;
 import io.restassured.response.Response;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
-import static org.hamcrest.Matchers.*;
+import static org.apache.http.HttpStatus.*;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 
 public class CourierLoginTest extends TestBase {
+    private CourierTestData validCourier;
+    private String createdCourierId;
 
-    @Test
-    public void testCourierLoginSuccessfully() {
-        CourierTestData courier = CourierTestData.getRandomCourier();
-        CourierUtils.createCourier(courier);
+    @Before
+    @Override
+    //Создание курьера
+    public void setUp() {
+        super.setUp();
+        validCourier = CourierTestData.getRandomCourier();
+        Response createResponse = CourierUtils.createCourier(validCourier);
+        createResponse.then().statusCode(SC_CREATED);
+    }
 
-        Response response = CourierUtils.loginCourier(courier);
-        response.then()
-                .statusCode(200)
-                .body("id", notNullValue());
-
-        // Cleanup
-        String courierId = response.path("id").toString();
-        CourierUtils.deleteCourier(courierId);
+    @After
+    // Очистка учетных данных курьера
+    public void tearDown() {
+        if (createdCourierId != null) {
+            CourierUtils.deleteCourier(createdCourierId);
+        }
     }
 
     @Test
-    public void testLoginWithIncorrectPassword() {
-        CourierTestData courier = CourierTestData.getRandomCourier();
-        CourierUtils.createCourier(courier);
+    // Проверка успешной авторизации с валидными учетными данными
+    public void testCourierLoginSuccessfully() {
+        Response response = CourierUtils.loginCourier(validCourier);
+        response.then()
+                .statusCode(SC_OK)
+                .body("id", notNullValue());
 
+        // Сохраняем ID для очистки
+        createdCourierId = response.path("id").toString();
+    }
+
+    @Test
+    // Проверка входа с неверным паролем
+    public void testLoginWithIncorrectPassword() {
         CourierTestData wrongCredentials = new CourierTestData(
-                courier.getLogin(),
+                validCourier.getLogin(),
                 "wrongPassword",
                 null
         );
-
         Response response = CourierUtils.loginCourier(wrongCredentials);
         response.then()
-                .statusCode(404)
+                .statusCode(SC_NOT_FOUND)
                 .body("message", equalTo("Учетная запись не найдена"));
 
-        // Cleanup
-        String courierId = CourierUtils.loginCourierAndGetId(courier);
-        CourierUtils.deleteCourier(courierId);
+        createdCourierId = CourierUtils.loginCourierAndGetId(validCourier);
     }
 
     @Test
+    // Проверка авторизации несуществующего пользователя
     public void testLoginWithNonExistentUser() {
         CourierTestData nonExistentCourier = CourierTestData.getRandomCourier();
-
         Response response = CourierUtils.loginCourier(nonExistentCourier);
         response.then()
-                .statusCode(404)
+                .statusCode(SC_NOT_FOUND)
                 .body("message", equalTo("Учетная запись не найдена"));
     }
 
-    @Test
-    public void testLoginWithoutRequiredField() {
-        CourierTestData courier = new CourierTestData("loginOnly", null, "firstNameOnly");
 
-        Response response = CourierUtils.loginCourier(courier);
+    @Test
+    // Проверка авторизации без логина
+    public void testLoginWithoutLogin() {
+        Response response = CourierUtils.loginCourier(
+                new CourierTestData(null, validCourier.getPassword(), null));
         response.then()
-                .statusCode(400)
+                .statusCode(SC_BAD_REQUEST)
+                .body("message", equalTo("Недостаточно данных для входа"));
+    }
+
+    @Test
+    // Проверка авторизации без пароля
+    public void testLoginWithoutPassword() {
+        Response response = CourierUtils.loginCourier(
+                new CourierTestData(validCourier.getLogin(), null, null));
+        response.then()
+                .statusCode(SC_BAD_REQUEST)
                 .body("message", equalTo("Недостаточно данных для входа"));
     }
 }
