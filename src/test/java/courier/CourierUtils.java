@@ -1,6 +1,5 @@
 package courier;
 
-import courier.CourierTestData;
 import io.qameta.allure.Step;
 import io.restassured.response.Response;
 
@@ -30,10 +29,8 @@ public class CourierUtils {
     }
 
     @Step("Send DELETE request to /api/v1/courier/:id")
-    public static void deleteCourier(String id) {
-        given()
-                .delete("/api/v1/courier/" + id)
-                .then()
-                .statusCode(200);
+    public static Response deleteCourier(String id) {
+        return given()
+                .delete("/api/v1/courier/" + id);
     }
 }
