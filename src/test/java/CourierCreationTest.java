@@ -41,10 +41,7 @@ public class CourierCreationTest extends TestBase {
         response.then()
                 .statusCode(SC_CREATED)
                 .body("ok", is(true));
-
-        courierId = CourierUtils.loginCourierAndGetId(courier);
     }
-
     @Test
     // Ошибка при попытке создать двух одинаковых курьеров
     public void testCreateDuplicateCourier() {
